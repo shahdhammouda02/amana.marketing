@@ -24,6 +24,7 @@ export default function DemographicView() {
         {/* Content Area */}
         <div className="flex-1 p-4 lg:p-6 overflow-y-auto">
           {/* Page content will go here */}
+          test
         </div>
         
         <Footer />
