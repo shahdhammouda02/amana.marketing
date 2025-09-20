@@ -1,68 +1,107 @@
 "use client";
 
-interface BubbleMapProps {
-  data: { city: string; country: string; revenue: number; spend: number }[];
-  valueKey: "revenue" | "spend";
-  sizeMultiplier?: number;
-  color?: string;
+import dynamic from "next/dynamic";
+import { useEffect } from "react";
+import { Circle, useMap } from "react-leaflet"; // استدعاء مباشر
+import "leaflet/dist/leaflet.css";
+
+// Dynamic Import فقط للخريطة و TileLayer
+const MapContainer = dynamic(
+  () => import("react-leaflet").then(mod => mod.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then(mod => mod.TileLayer),
+  { ssr: false }
+);
+
+let L: any;
+if (typeof window !== "undefined") {
+  L = require("leaflet");
+  require("leaflet.heat");
 }
 
-export function BubbleMap({
+interface MapBubbleHeatProps {
+  data: {
+    lat?: number;
+    lng?: number;
+    [key: string]: any;
+  }[];
+  bubbles: {
+    valueKey: string;
+    color: string;
+    sizeMultiplier: number;
+  }[];
+  heatValueKey?: string;
+}
+
+const HeatLayer = ({
   data,
-  valueKey,
-  sizeMultiplier = 0.00005,
-  color = "#EF4444",
-}: BubbleMapProps) {
-  if (!data || data.length === 0) {
-    return (
-      <div className="bg-gray-800 p-6 rounded-lg shadow">
-        <div className="text-gray-400 text-center">No regional data available</div>
-      </div>
-    );
-  }
+  heatValueKey,
+}: {
+  data: MapBubbleHeatProps["data"];
+  heatValueKey?: string;
+}) => {
+  const map = useMap();
 
-  const maxValue = Math.max(...data.map((item) => item[valueKey]));
+  useEffect(() => {
+    if (!map || !L) return;
 
+    const points = data
+      .filter(d => d.lat && d.lng)
+      .map(d => [d.lat, d.lng, heatValueKey && d[heatValueKey] ? d[heatValueKey] : 1]);
+
+    const heat = L.heatLayer(points, {
+      radius: 25,
+      blur: 15,
+      gradient: { 0.2: "#ccc", 0.4: "#aaa", 0.6: "#888", 0.8: "#555", 1.0: "#333" },
+    }).addTo(map);
+
+    return () => {
+      map.removeLayer(heat);
+    };
+  }, [map, data, heatValueKey]);
+
+  return null;
+};
+
+export const BubbleHeatMap = ({ data, bubbles, heatValueKey }: MapBubbleHeatProps) => {
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow">
-      <div className="flex flex-wrap justify-center items-center gap-6 p-6">
-        {data.map((region, index) => {
-          const normalizedValue = region[valueKey] / maxValue;
-          const size = Math.max(40, normalizedValue * 120);
+    <MapContainer
+      center={[20, 0]}
+      zoom={2}
+      scrollWheelZoom={false}
+      className="w-full h-96 rounded-lg"
+    >
+      {/* خريطة فاتحة (أبيض/رمادي) */}
+      <TileLayer
+        url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png"
+        attribution="&copy; Stadia Maps, &copy; OpenMapTiles &copy; OpenStreetMap contributors"
+      />
 
-          return (
-            <div
-              key={index}
-              className="flex flex-col items-center"
-              title={`${region.city}, ${region.country}: ${valueKey} $${region[
-                valueKey
-              ].toLocaleString()}`}
-            >
-              <div
-  className="rounded-full flex items-center justify-center text-white font-semibold transition-transform duration-300 hover:scale-110"
-  style={{
-    width: `${size}px`,
-    height: `${size}px`,
-    backgroundColor: color,
-    opacity: 0.8,
-    fontSize: `${Math.max(10, Math.min(18, size / 6))}px`,
-    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
-  }}
->
-  {(region.city || region.country || "").substring(0, 3).toUpperCase()}
-</div>
+      {/* Heat Layer */}
+      {L && <HeatLayer data={data} heatValueKey={heatValueKey} />}
 
-              <span className="mt-2 text-xs text-gray-300">
-                ${region[valueKey].toLocaleString()}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="text-center text-xs text-gray-400 mt-4">
-        Circle size represents {valueKey}
-      </div>
-    </div>
+      {/* Bubbles */}
+      {data.map((d, i) =>
+        bubbles.map(
+          (bubble, idx) =>
+            d.lat &&
+            d.lng &&
+            d[bubble.valueKey] && (
+              <Circle
+                key={`${i}-${idx}`}
+                center={[d.lat, d.lng]}
+                radius={Math.sqrt(d[bubble.valueKey]) * bubble.sizeMultiplier}
+                pathOptions={{
+                  color: bubble.color,
+                  fillColor: bubble.color,
+                  fillOpacity: 0.6,
+                }}
+              />
+            )
+        )
+      )}
+    </MapContainer>
   );
-}
+};

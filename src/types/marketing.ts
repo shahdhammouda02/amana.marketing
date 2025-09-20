@@ -79,6 +79,8 @@ export interface RegionalPerformance {
   cpc: number;
   cpa: number;
   roas: number;
+  lat: number;   // Add this line
+  lng: number; 
 }
 
 export interface Creative {
