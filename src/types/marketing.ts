@@ -55,6 +55,7 @@ export interface DevicePerformance {
 }
 
 export interface WeeklyPerformance {
+  week: string;
   week_start: string;
   week_end: string;
   impressions: number;
@@ -65,6 +66,7 @@ export interface WeeklyPerformance {
 }
 
 export interface RegionalPerformance {
+  city: string;
   region: string;
   country: string;
   impressions: number;
