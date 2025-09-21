@@ -1,23 +1,18 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import dynamic from "next/dynamic";
-
 import { fetchMarketingData } from "../../src/lib/api";
 import { MarketingData } from "../../src/types/marketing";
 import { Navbar } from "../../src/components/ui/navbar";
 import { CardMetric } from "../../src/components/ui/card-metric";
 import { Footer } from "../../src/components/ui/footer";
 import { MapPin, DollarSign, TrendingUp, Globe } from "lucide-react";
-
-// استدعاء BubbleHeatMap ديناميكي بدون SSR
-const BubbleHeatMap = dynamic(
-  () => import("../../src/components/ui/bubble-map").then(mod => mod.BubbleHeatMap),
-  { ssr: false }
-);
+import { BubbleMap } from "../../src/components/ui/bubble-map";
 
 export default function RegionView() {
-  const [marketingData, setMarketingData] = useState<MarketingData | null>(null);
+  const [marketingData, setMarketingData] = useState<MarketingData | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -69,17 +64,32 @@ export default function RegionView() {
     });
 
     Object.values(regionalData).forEach((data: any) => {
-      data.ctr = data.impressions > 0 ? (data.clicks / data.impressions) * 100 : 0;
-      data.conversion_rate = data.clicks > 0 ? (data.conversions / data.clicks) * 100 : 0;
-      data.roi = data.spend > 0 ? ((data.revenue - data.spend) / data.spend) * 100 : 0;
+      data.ctr =
+        data.impressions > 0 ? (data.clicks / data.impressions) * 100 : 0;
+      data.conversion_rate =
+        data.clicks > 0 ? (data.conversions / data.clicks) * 100 : 0;
+      data.roi =
+        data.spend > 0 ? ((data.revenue - data.spend) / data.spend) * 100 : 0;
     });
 
     return {
       regions: Object.values(regionalData),
-      totalRevenue: Object.values(regionalData).reduce((sum, r: any) => sum + r.revenue, 0),
-      totalSpend: Object.values(regionalData).reduce((sum, r: any) => sum + r.spend, 0),
-      totalClicks: Object.values(regionalData).reduce((sum, r: any) => sum + r.clicks, 0),
-      totalConversions: Object.values(regionalData).reduce((sum, r: any) => sum + r.conversions, 0),
+      totalRevenue: Object.values(regionalData).reduce(
+        (sum, r: any) => sum + r.revenue,
+        0
+      ),
+      totalSpend: Object.values(regionalData).reduce(
+        (sum, r: any) => sum + r.spend,
+        0
+      ),
+      totalClicks: Object.values(regionalData).reduce(
+        (sum, r: any) => sum + r.clicks,
+        0
+      ),
+      totalConversions: Object.values(regionalData).reduce(
+        (sum, r: any) => sum + r.conversions,
+        0
+      ),
     };
   }, [marketingData]);
 
@@ -142,22 +152,12 @@ export default function RegionView() {
                 />
               </div>
 
-              {/* Map Section */}
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold text-white mb-4">
-                  Revenue & Spend by Region
-                </h2>
-                <BubbleHeatMap
-                  data={regionalMetrics.regions}
-                  bubbles={[
-                    { valueKey: "revenue", color: "#10B981", sizeMultiplier: 0.5 },
-                    { valueKey: "spend", color: "#3B82F6", sizeMultiplier: 0.7 },
-                  ]}
-                  heatValueKey="revenue"
-                />
+              {/* Map Section – الكل هنا */}
+              <div className="mb-8 w-full h-[500px]">
+                <BubbleMap data={regionalMetrics.regions} />
               </div>
 
-              {/* Regional Performance Table */}
+              {/* Regional Performance Table – بدون تغيير */}
               <div className="bg-gray-800 p-4 rounded-lg shadow">
                 <h2 className="text-xl font-semibold text-white mb-4">
                   Regional Performance Details
@@ -166,31 +166,65 @@ export default function RegionView() {
                   <table className="min-w-full divide-y divide-gray-700">
                     <thead>
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">City</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Country</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Impressions</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Clicks</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Conversions</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">CTR</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Conv. Rate</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Spend</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Revenue</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">ROI</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Country
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Impressions
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Clicks
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Conversions
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          CTR
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Conv. Rate
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Spend
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Revenue
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          ROI
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
                       {regionalMetrics.regions.map((region, index) => (
                         <tr key={index}>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-white">{region.city}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{region.country}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">{region.impressions.toLocaleString()}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">{region.clicks.toLocaleString()}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">{region.conversions.toLocaleString()}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">{region.ctr.toFixed(2)}%</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">{region.conversion_rate.toFixed(2)}%</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">${region.spend.toLocaleString()}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">${region.revenue.toLocaleString()}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">{region.roi.toFixed(2)}%</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
+                            {region.country}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">
+                            {region.impressions.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">
+                            {region.clicks.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">
+                            {region.conversions.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">
+                            {region.ctr.toFixed(2)}%
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">
+                            {region.conversion_rate.toFixed(2)}%
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">
+                            ${region.spend.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">
+                            ${region.revenue.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 text-right">
+                            {region.roi.toFixed(2)}%
+                          </td>
                         </tr>
                       ))}
                     </tbody>

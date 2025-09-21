@@ -1,107 +1,126 @@
 "use client";
 
+import React from "react";
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
-import { Circle, useMap } from "react-leaflet"; // استدعاء مباشر
-import "leaflet/dist/leaflet.css";
 
-// Dynamic Import فقط للخريطة و TileLayer
 const MapContainer = dynamic(
-  () => import("react-leaflet").then(mod => mod.MapContainer),
+  () => import("react-leaflet").then((mod) => mod.MapContainer),
   { ssr: false }
 );
 const TileLayer = dynamic(
-  () => import("react-leaflet").then(mod => mod.TileLayer),
+  () => import("react-leaflet").then((mod) => mod.TileLayer),
   { ssr: false }
 );
+const Circle = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Circle),
+  { ssr: false }
+);
+const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
+  ssr: false,
+});
+import "leaflet/dist/leaflet.css";
 
-let L: any;
-if (typeof window !== "undefined") {
-  L = require("leaflet");
-  require("leaflet.heat");
-}
-
-interface MapBubbleHeatProps {
+interface BubbleMapProps {
   data: {
     lat?: number;
     lng?: number;
-    [key: string]: any;
+    city: string;
+    country: string;
+    revenue: number;
+    spend: number;
   }[];
-  bubbles: {
-    valueKey: string;
-    color: string;
-    sizeMultiplier: number;
-  }[];
-  heatValueKey?: string;
 }
 
-const HeatLayer = ({
-  data,
-  heatValueKey,
-}: {
-  data: MapBubbleHeatProps["data"];
-  heatValueKey?: string;
-}) => {
-  const map = useMap();
+export const BubbleMap: React.FC<BubbleMapProps> = ({ data }) => {
+  const center = data.length ? [data[0].lat || 0, data[0].lng || 0] : [0, 0];
 
-  useEffect(() => {
-    if (!map || !L) return;
+  const colors = ["#EC4899", "#10B981", "#3B82F6", "#FACC15"];
+  const countryColorMap: Record<string, string> = {};
+  let colorIndex = 0;
 
-    const points = data
-      .filter(d => d.lat && d.lng)
-      .map(d => [d.lat, d.lng, heatValueKey && d[heatValueKey] ? d[heatValueKey] : 1]);
+  // تجميع البيانات حسب الدولة
+  const countryData: Record<
+    string,
+    { lat: number; lng: number; revenue: number; spend: number }
+  > = {};
 
-    const heat = L.heatLayer(points, {
-      radius: 25,
-      blur: 15,
-      gradient: { 0.2: "#ccc", 0.4: "#aaa", 0.6: "#888", 0.8: "#555", 1.0: "#333" },
-    }).addTo(map);
+  data.forEach((city) => {
+    if (!countryData[city.country]) {
+      countryData[city.country] = {
+        lat: city.lat || 0,
+        lng: city.lng || 0,
+        revenue: 0,
+        spend: 0,
+      };
+      countryColorMap[city.country] = colors[colorIndex % colors.length];
+      colorIndex++;
+    }
+    countryData[city.country].revenue += city.revenue;
+    countryData[city.country].spend += city.spend;
+  });
 
-    return () => {
-      map.removeLayer(heat);
-    };
-  }, [map, data, heatValueKey]);
-
-  return null;
-};
-
-export const BubbleHeatMap = ({ data, bubbles, heatValueKey }: MapBubbleHeatProps) => {
   return (
     <MapContainer
-      center={[20, 0]}
+      center={center as [number, number]}
       zoom={2}
-      scrollWheelZoom={false}
-      className="w-full h-96 rounded-lg"
+      style={{ height: "100%", width: "100%" }}
     >
-      {/* خريطة فاتحة (أبيض/رمادي) */}
       <TileLayer
         url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png"
-        attribution="&copy; Stadia Maps, &copy; OpenMapTiles &copy; OpenStreetMap contributors"
+        attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       />
 
-      {/* Heat Layer */}
-      {L && <HeatLayer data={data} heatValueKey={heatValueKey} />}
+      {Object.entries(countryData).map(([country, metrics], idx) => {
+        const color = countryColorMap[country];
 
-      {/* Bubbles */}
-      {data.map((d, i) =>
-        bubbles.map(
-          (bubble, idx) =>
-            d.lat &&
-            d.lng &&
-            d[bubble.valueKey] && (
-              <Circle
-                key={`${i}-${idx}`}
-                center={[d.lat, d.lng]}
-                radius={Math.sqrt(d[bubble.valueKey]) * bubble.sizeMultiplier}
-                pathOptions={{
-                  color: bubble.color,
-                  fillColor: bubble.color,
-                  fillOpacity: 0.6,
-                }}
-              />
-            )
-        )
-      )}
+        // إزاحة منظمة لكل فقاعة
+        const offsetDegree = 0.3; // المسافة بين Revenue و Spend
+        const revenueLat = metrics.lat;
+        const revenueLng = metrics.lng + offsetDegree;
+        const spendLat = metrics.lat;
+        const spendLng = metrics.lng - offsetDegree;
+
+        const revenueRadius = Math.sqrt(metrics.revenue) * 1000;
+        const spendRadius = Math.sqrt(metrics.spend) * 1000;
+
+        return (
+          <React.Fragment key={idx}>
+            {/* Revenue */}
+            <Circle
+              center={[revenueLat, revenueLng]}
+              radius={revenueRadius}
+              color={color}
+              fillColor={color}
+              fillOpacity={0.5}
+            >
+              <Popup>
+                <div>
+                  <strong>{country}</strong>
+                  <br />
+                  Revenue: ${metrics.revenue.toLocaleString()}
+                </div>
+              </Popup>
+            </Circle>
+
+            {/* Spend */}
+            <Circle
+              center={[spendLat, spendLng]}
+              radius={spendRadius}
+              color={color}
+              fillColor={color}
+              fillOpacity={0.5}
+            >
+              <Popup>
+                <div>
+                  <strong>{country}</strong>
+                  <br />
+                  Spend: ${metrics.spend.toLocaleString()}
+                </div>
+              </Popup>
+            </Circle>
+          </React.Fragment>
+        );
+      })}
     </MapContainer>
   );
 };
